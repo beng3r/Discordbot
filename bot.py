@@ -22,13 +22,14 @@ def main():
         """Checks for a response from the bot"""
         await ctx.send("Pong")
     
-    @client.command()
+    @bot.command()
     async def join(ctx):
+        """Join Voice Channel"""
         channel = ctx.author.voice.channel
         await channel.connect()
-    
-    @client.command()
+    @bot.command()
     async def leave(ctx):
+        """Leave Voice """
         await ctx.voice_client.disconnect()
 
     client.run(os.getenv("DISCORD_TOKEN"))
