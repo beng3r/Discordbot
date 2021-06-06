@@ -148,10 +148,10 @@ class MusicPlayer:
             self.current = source
 
             self._guild.voice_client.play(source, after=lambda _: self.bot.loop.call_soon_threadsafe(self.next.set))
-            embed1 = discord.Embed(title="Now playing", description=f"[{source.title}]({source.web_url}) [{source.requester.mention}]", color=discord.Color.green())
-            self.np = await self._channel.send(embed=embed1)
+            embed = discord.Embed(title="Now playing", description=f"[{source.title}]({source.web_url}) [{source.requester.mention}]", color=discord.Color.green())
+            self.np = await self._channel.send(embed=embed)
             await self.next.wait()
-            await self._channel.delete_message(embed1)
+            
 
             # Make sure the FFmpeg process is cleaned up.
             source.cleanup()
