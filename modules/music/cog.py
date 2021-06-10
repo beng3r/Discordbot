@@ -9,6 +9,10 @@ from async_timeout import timeout
 from functools import partial
 import youtube_dl
 from youtube_dl import YoutubeDL
+import urllib.request
+import urllib.parse
+import re
+import pafy
 
 # Suppress noise about console usage from errors
 youtube_dl.utils.bug_reports_message = lambda: ''
@@ -27,9 +31,9 @@ ytdlopts = {
     'source_address': '0.0.0.0'  # ipv6 addresses cause issues sometimes
 }
 
-ffmpeg_options = {
-    'options': '-vn',
-    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+ffmpegopts = {
+    'before_options': '-nostdin',
+    'options': '-vn'
 }
 
 ytdl = YoutubeDL(ytdlopts)
@@ -96,20 +100,21 @@ class YTDLSource(discord.PCMVolumeTransformer):
         return cls(discord.FFmpegPCMAudio(data['url']), data=data, requester=requester)
 
 
-class1 MusicPlayer:
+class MusicPlayer:
     """A class which is assigned to each guild using the bot for Music.
     This class implements a queue and loop, which allows for different guilds to listen to different playlists
     simultaneously.
     When the bot disconnects from the Voice it's instance will be destroyed.
     """
 
-    __slots__ = ('bot', '_guild', '_channel', '_cog', 'queue', 'next', 'current', 'np', 'volume')
+    __slots__ = ('bot', '_guild', '_channel', '_cog', 'queue', 'next', 'current', 'np', 'volume', '_loop')
 
     def __init__(self, ctx):
         self.bot = ctx.bot
         self._guild = ctx.guild
         self._channel = ctx.channel
         self._cog = ctx.cog
+        self._loop = False
 
         self.queue = asyncio.Queue()
         self.next = asyncio.Event()
@@ -117,7 +122,8 @@ class1 MusicPlayer:
         self.np = None  # Now playing message
         self.volume = .5
         self.current = None
-
+        
+        
         ctx.bot.loop.create_task(self.player_loop())
 
     async def player_loop(self):
@@ -126,23 +132,26 @@ class1 MusicPlayer:
 
         while not self.bot.is_closed():
             self.next.clear()
-
+        
+            
             try:
                 # Wait for the next song. If we timeout cancel the player and disconnect...
                 async with timeout(300):  # 5 minutes...
                     source = await self.queue.get()
             except asyncio.TimeoutError:
+                
                 return self.destroy(self._guild)
 
+            
             if not isinstance(source, YTDLSource):
                 # Source was probably a stream (not downloaded)
                 # So we should regather to prevent stream expiration
-                try:
-                    source = await YTDLSource.regather_stream(source, loop=self.bot.loop)
-                except Exception as e:
-                    await self._channel.send(f'There was an error processing your song.\n'
+                    try:
+                        source = await YTDLSource.regather_stream(source, loop=self.bot.loop)
+                    except Exception as e:
+                        await self._channel.send(f'There was an error processing your song.\n'
                                              f'```css\n[{e}]\n```')
-                    continue
+                        continue
 
             source.volume = self.volume
             self.current = source
@@ -151,7 +160,8 @@ class1 MusicPlayer:
             embed = discord.Embed(title="Now playing", description=f"[{source.title}]({source.web_url}) [{source.requester.mention}]", color=discord.Color.green())
             self.np = await self._channel.send(embed=embed)
             await self.next.wait()
-            
+            await self.np.delete()
+
 
             # Make sure the FFmpeg process is cleaned up.
             source.cleanup()
@@ -160,6 +170,34 @@ class1 MusicPlayer:
     def destroy(self, guild):
         """Disconnect and cleanup the player."""
         return self.bot.loop.create_task(self._cog.cleanup(guild))
+
+    async def coffee(self, ctx, *, search: str = "https://www.youtube.com/watch?v=-5KAN9_CzSA"):
+        """Request a song and add it to the queue.
+        This command attempts to join a valid voice channel if the bot is not already in one.
+        Uses YTDL to automatically search and retrieve a song.
+        Parameters
+        ------------
+        search: str [Required]
+            The song to search and retrieve using YTDL. This could be a simple search, an ID or URL.
+        """
+
+
+        await ctx.trigger_typing()
+
+        vc = ctx.voice_client
+
+        if not vc:
+            await ctx.invoke(self.connect_)
+
+        player = self.get_player(ctx)
+
+        # If download is False, source will be a dict which will be used later to regather the stream.
+        # If download is True, source will be a discord.FFmpegPCMAudio with a VolumeTransformer.
+        source = await YTDLSource.create_source(ctx, search, loop=self.bot.loop, download=False)
+
+        await player.queue.put(source)
+
+        
 
 
 class Music(commands.Cog):
@@ -273,6 +311,8 @@ class Music(commands.Cog):
 
         await player.queue.put(source)
 
+
+
     @commands.command(name='pause', description="pauses music")
     async def pause_(self, ctx):
         """Pause the currently playing song."""
@@ -366,6 +406,7 @@ class Music(commands.Cog):
         player = self.get_player(ctx)
         if player.queue.empty():
             embed = discord.Embed(title="", description="queue is empty", color=discord.Color.green())
+            
             return await ctx.send(embed=embed)
 
         seconds = vc.source.duration % (24 * 3600) 
@@ -463,6 +504,64 @@ class Music(commands.Cog):
         await ctx.send('**Successfully disconnected**')
 
         await self.cleanup(ctx.guild)
+
+
+
+    @commands.command(name='study', aliases=['stdy','s'], description="streams study lofi")
+    async def study(self, ctx, *, search: str = "lofi hip hop live"):
+        """Request a song and add it to the queue.
+        This command attempts to join a valid voice channel if the bot is not already in one.
+        Uses YTDL to automatically search and retrieve a song.
+        Parameters
+        ------------
+        search: str [Required]
+            The song to search and retrieve using YTDL. This could be a simple search, an ID or URL.
+        """
+
+
+        await ctx.trigger_typing()
+
+        vc = ctx.voice_client
+
+        if not vc:
+            await ctx.invoke(self.connect_)
+
+        player = self.get_player(ctx)
+
+        # If download is False, source will be a dict which will be used later to regather the stream.
+        # If download is True, source will be a discord.FFmpegPCMAudio with a VolumeTransformer.
+        source = await YTDLSource.create_source(ctx, search, loop=self.bot.loop, download=False)
+
+        await player.queue.put(source)
+
+
+    @commands.command(name='coffee', aliases=['kohi','c'], description="streams coffee lofi")
+    async def coffee(self, ctx, *, search: str = "https://www.youtube.com/watch?v=-5KAN9_CzSA"):
+        """Request a song and add it to the queue.
+        This command attempts to join a valid voice channel if the bot is not already in one.
+        Uses YTDL to automatically search and retrieve a song.
+        Parameters
+        ------------
+        search: str [Required]
+            The song to search and retrieve using YTDL. This could be a simple search, an ID or URL.
+        """
+
+
+        await ctx.trigger_typing()
+
+        vc = ctx.voice_client
+
+        if not vc:
+            await ctx.invoke(self.connect_)
+
+        player = self.get_player(ctx)
+
+        # If download is False, source will be a dict which will be used later to regather the stream.
+        # If download is True, source will be a discord.FFmpegPCMAudio with a VolumeTransformer.
+        source = await YTDLSource.create_source(ctx, search, loop=self.bot.loop, download=False)
+
+        await player.queue.put(source)
+   
 
 
 def setup(bot):
