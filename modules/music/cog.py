@@ -130,7 +130,7 @@ class MusicPlayer:
             try:
                 # Wait for the next song. If we timeout cancel the player and disconnect...
                 async with timeout(300):  # 5 minutes...
-                    source = await YTDLSource.regather_stream('https://www.youtube.com/watch?v=-5KAN9_CzSA', loop=self.bot.loop)
+                    source = await self.queue.get()
             except asyncio.TimeoutError:
                 return self.destroy(self._guild)
 
