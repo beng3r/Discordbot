@@ -507,7 +507,7 @@ class Music(commands.Cog):
 
     @commands.command(name='study', aliases=['stdy','s'], description="streams study lofi")
     async def study(self, ctx, *, search: str = "lofi hip hop live"):
-        """Request a song and add it to the queue.
+        """Play Study Lofi.
         This command attempts to join a valid voice channel if the bot is not already in one.
         Uses YTDL to automatically search and retrieve a song.
         Parameters
@@ -535,7 +535,7 @@ class Music(commands.Cog):
 
     @commands.command(name='coffee', aliases=['kohi','c'], description="streams coffee lofi")
     async def coffee(self, ctx, *, search: str = "https://www.youtube.com/watch?v=-5KAN9_CzSA"):
-        """Request a song and add it to the queue.
+        """Play Coffee Lofi.
         This command attempts to join a valid voice channel if the bot is not already in one.
         Uses YTDL to automatically search and retrieve a song.
         Parameters
