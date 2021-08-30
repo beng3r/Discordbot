@@ -19,6 +19,16 @@ def main():
     
         print(f"{client.user.name} has connected to Discord.")
 
+
+        # Setting `Streaming ` status
+        await bot.change_presence(activity=discord.Streaming(name="Don't click my Stream", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
+
+        # Setting `Listening ` status
+        await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="your conversation"))
+
+        # Setting `Watching ` status
+        await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="this server die"))
+        
     for folder in os.listdir("modules"):
         if os.path.exists(os.path.join("modules", folder, "cog.py")):
             client.load_extension(f"modules.{folder}.cog")
