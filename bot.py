@@ -16,7 +16,7 @@ def main():
     
     @client.event
     async def on_ready():
-        await client.change_presence(activity=discord.Streaming(name='Dont click my stream', url='https://www.youtube.com/watch?v=dQw4w9WgXcQ'))
+        await client.change_presence(activity=discord.Streaming(name='Dont click on my stream', url='https://www.youtube.com/watch?v=dQw4w9WgXcQ'))
         print(f"{client.user.name} has connected to Discord.")
 
 
